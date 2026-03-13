@@ -23,7 +23,7 @@ BLOCK_SIZE = 8   # bytes per block (64 bits total)
 HALF_SIZE  = 4   # bytes per half  (32 bits each)
 ROUNDS     = 4   # number of Feistel rounds
 
-MASK32 = 0xFFFFFFFF  # used to keep values within 32 bits
+MOD32 = 2**32  # used to keep values within 32 bits (modular arithmetic)
 
 
 # ---------------------------------------------------------------------------
@@ -39,8 +39,8 @@ def generate_round_keys(master_key: int) -> list[int]:
     """
     round_keys = []
     for i in range(ROUNDS):
-        # Multiply and mask to stay within 32 bits
-        round_key = (master_key * (i + 1)) & MASK32
+        # Multiply and reduce mod 2^32 to stay within 32 bits
+        round_key = (master_key * (i + 1)) % MOD32
         round_keys.append(round_key)
     return round_keys
 
@@ -57,10 +57,10 @@ def F(right: int, round_key: int) -> int:
     Real ciphers use substitution boxes (S-boxes) and permutations.
 
     Try experimenting with:
-      return (right + round_key) & MASK32          # addition
+      return (right + round_key) % MOD32           # addition
       return bin(right ^ round_key).count('1')     # bit counting
     """
-    return (right ^ round_key) & MASK32
+    return (right ^ round_key) % MOD32
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +85,7 @@ def encrypt_block(block: bytes, round_keys: list[int]) -> bytes:
 
     for i in range(ROUNDS):
         new_L = R
-        new_R = (L ^ F(R, round_keys[i])) & MASK32
+        new_R = (L ^ F(R, round_keys[i])) % MOD32
         L, R = new_L, new_R
 
     # Reassemble the two halves into 8 bytes
@@ -111,7 +111,7 @@ def decrypt_block(block: bytes, round_keys: list[int]) -> bytes:
     # Reverse the round keys for decryption
     for i in reversed(range(ROUNDS)):
         new_R = L
-        new_L = (R ^ F(L, round_keys[i])) & MASK32
+        new_L = (R ^ F(L, round_keys[i])) % MOD32
         L, R = new_L, new_R
 
     return (
